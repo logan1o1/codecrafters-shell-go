@@ -24,8 +24,6 @@ func main() {
 		if (len(command) - 1) > 0 {
 			fmt.Println(command[:len(command)-1] + ": command not found")
 			return
-		} else {
-			return
 		}
 	}
 
