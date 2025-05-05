@@ -20,7 +20,7 @@ func main() {
 	// 	os.Exit(1)
 	// }
 
-	for true {
+	for {
 		fmt.Fprint(os.Stdout, "$ ")
 
 		cmd, err := bufio.NewReader(os.Stdin).ReadString('\n')
