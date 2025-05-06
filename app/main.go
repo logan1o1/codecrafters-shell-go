@@ -25,7 +25,23 @@ func main() {
 			break
 		}
 
-		if strings.Contains(cmd, "echo") {
+		if strings.Contains(cmd, "type") {
+
+			typeArr := strings.Fields(cmd)
+
+			switch typeArr[1] {
+			case "echo":
+				fmt.Println(typeArr[1] + " is a shell builtin")
+			case "exit":
+				fmt.Println(typeArr[1] + " is a shell builtin")
+			case "type":
+				fmt.Println(typeArr[1] + " is a shell builtin")
+			default:
+				fmt.Println(typeArr[1] + ": not found")
+			}
+
+		} else if strings.Contains(cmd, "echo") {
+
 			inputArr := strings.Fields(cmd)
 			outputArr := inputArr[1:]
 			output := strings.Join(outputArr, " ")
