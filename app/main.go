@@ -4,53 +4,74 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 )
 
-// Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
-var _ = fmt.Fprint
+var builtins = []string{"exit", "echo", "type"}
 
 func main() {
 
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
 
-		cmd, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		input, err := bufio.NewReader(os.Stdin).ReadString('\n')
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input: ", err)
 			os.Exit(1)
 		}
+		cmdArr := strings.Fields(input)
+		cmd := cmdArr[0]
 
-		if strings.TrimSpace(cmd) == "exit 0" {
+		if strings.TrimSpace(input) == "exit 0" {
 			break
 		}
 
-		if strings.Contains(cmd, "type") {
-
-			typeArr := strings.Fields(cmd)
-
-			switch typeArr[1] {
-			case "echo":
-				fmt.Println(typeArr[1] + " is a shell builtin")
-			case "exit":
-				fmt.Println(typeArr[1] + " is a shell builtin")
-			case "type":
-				fmt.Println(typeArr[1] + " is a shell builtin")
-			default:
-				fmt.Println(typeArr[1] + ": not found")
-			}
-
-		} else if strings.Contains(cmd, "echo") {
-
-			inputArr := strings.Fields(cmd)
-			outputArr := inputArr[1:]
-			output := strings.Join(outputArr, " ")
-
-			fmt.Println(output)
-		} else {
+		switch cmd {
+		case "echo":
+			EchoCmd(cmdArr)
+		case "type":
+			TypeCmd(cmdArr)
+		default:
 			fmt.Println(strings.TrimSpace(cmd) + ": command not found")
 		}
 
 	}
 
+}
+
+func EchoCmd(cmdArr []string) {
+	output := strings.Join(cmdArr[1:], " ")
+	fmt.Println(output)
+}
+
+func TypeCmd(cmdArr []string) {
+	if len(cmdArr) == 1 {
+		return
+	}
+
+	value := cmdArr[1]
+
+	if slices.Contains(builtins, value) {
+		fmt.Println(value + " is a shell builtin")
+		return
+	}
+
+	if filePath, exists := FindPath(value); exists {
+		fmt.Println(value + " is " + filePath)
+		return
+	}
+
+	fmt.Println(value + ": not found")
+}
+
+func FindPath(val string) (string, bool) {
+	pathValue := os.Getenv("PATH")
+	for _, path := range strings.Split(pathValue, ":") {
+		file := path + "/" + val
+		if _, err := os.Stat(file); err == nil {
+			return file, true
+		}
+	}
+	return "", false
 }
