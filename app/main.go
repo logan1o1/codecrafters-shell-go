@@ -3,9 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"math/rand"
 	"os"
-	"path/filepath"
+	"os/exec"
 	"slices"
 	"strings"
 )
@@ -24,7 +23,8 @@ func main() {
 			os.Exit(1)
 		}
 		cmdArr := strings.Fields(input)
-		cmd := cmdArr[0]
+		cmd := strings.TrimSpace(cmdArr[0])
+		args := cmdArr[1:]
 
 		if strings.TrimSpace(input) == "exit 0" {
 			break
@@ -36,7 +36,12 @@ func main() {
 		case "type":
 			TypeCmd(cmdArr, paths)
 		default:
-			fmt.Println(strings.TrimSpace(cmd) + ": command not found")
+			filepath, exists := FindPath(cmd, paths)
+			if exists && filepath != "" {
+				CustomExeCmd(cmd, args)
+			} else {
+				fmt.Println(cmd + ": command not found")
+			}
 		}
 	}
 
@@ -67,22 +72,11 @@ func TypeCmd(cmdArr []string, paths []string) {
 	fmt.Println(value + ": not found")
 }
 
-func CustomExeCmd(cmdArr []string, paths []string) {
-	if len(cmdArr) == 1 {
-		return
-	}
-
-	value := cmdArr[1]
-	programName := cmdArr[0]
-	numOfArg := len(cmdArr)
-	programSign := rand.Uint64()
-
-	if _, exists := FindPath(programName, paths); exists {
-		fmt.Printf("Program was passed %d args (including program name).\n", numOfArg)
-		fmt.Printf("Arg #0 (program name): %s\n", programName)
-		fmt.Printf("Arg #1: %s\n", value)
-		fmt.Printf("Program Signature: %d\n", programSign)
-	}
+func CustomExeCmd(cmd string, args []string) {
+	exc := exec.Command(cmd, args...)
+	exc.Stdout = os.Stdout
+	exc.Stderr = os.Stderr
+	exc.Run()
 }
 
 func FindPath(val string, paths []string) (string, bool) {
@@ -95,13 +89,11 @@ func FindPath(val string, paths []string) (string, bool) {
 	return "", false
 }
 
-func FindExecutables(cmd string, paths []string) string {
-	for _, path := range paths {
-		filepath := filepath.Join(path, cmd)
-		fileinfo, err := os.Stat(filepath)
-		if err != nil && fileinfo.Mode().Perm()&0111 != 0 {
-			return filepath
-		}
-	}
-	return ""
-}
+// func FindExecutables(cmd string, paths []string) string {
+// 	filepath, exists := FindPath(cmd, paths)
+// 	_, err := os.Stat(filepath)
+// 	if err != nil && exists {
+// 		return filepath
+// 	}
+// 	return ""
+// }
