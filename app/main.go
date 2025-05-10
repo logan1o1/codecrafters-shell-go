@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var builtins = []string{"exit", "echo", "type"}
+var builtins = []string{"exit", "echo", "type", "pwd"}
 
 func main() {
 
@@ -35,6 +35,8 @@ func main() {
 			EchoCmd(cmdArr)
 		case "type":
 			TypeCmd(cmdArr, paths)
+		case "pwd":
+			Pwd()
 		default:
 			filepath, exists := FindPath(cmd, paths)
 			if exists && filepath != "" {
@@ -89,11 +91,10 @@ func FindPath(val string, paths []string) (string, bool) {
 	return "", false
 }
 
-// func FindExecutables(cmd string, paths []string) string {
-// 	filepath, exists := FindPath(cmd, paths)
-// 	_, err := os.Stat(filepath)
-// 	if err != nil && exists {
-// 		return filepath
-// 	}
-// 	return ""
-// }
+func Pwd() {
+	dir, err := os.Getwd()
+	if err != nil {
+		return
+	}
+	fmt.Println(dir)
+}
