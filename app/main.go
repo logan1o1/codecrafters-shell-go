@@ -37,6 +37,8 @@ func main() {
 			TypeCmd(cmdArr, paths)
 		case "pwd":
 			Pwd()
+		case "cd":
+			Cd(args)
 		default:
 			filepath, exists := FindPath(cmd, paths)
 			if exists && filepath != "" {
@@ -97,4 +99,12 @@ func Pwd() {
 		return
 	}
 	fmt.Println(dir)
+}
+
+func Cd(args []string) {
+	path := strings.Join(args, "")
+	err := os.Chdir(path)
+	if err != nil {
+		fmt.Println("cd: " + path + ": No such file or directory")
+	}
 }
