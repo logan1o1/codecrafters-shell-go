@@ -103,7 +103,9 @@ func Pwd() {
 
 func Cd(args []string) {
 	path := strings.Join(args, "")
-	err := os.Chdir(path)
+	homepath := os.Getenv("HOME")
+	formatedPath := strings.ReplaceAll(path, "~", homepath)
+	err := os.Chdir(formatedPath)
 	if err != nil {
 		fmt.Println("cd: " + path + ": No such file or directory")
 	}
