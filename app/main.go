@@ -11,6 +11,62 @@ import (
 
 var builtins = []string{"exit", "echo", "type", "pwd"}
 
+func FindPath(val string, paths []string) (string, bool) {
+	for _, path := range paths {
+		file := path + "/" + val
+		if _, err := os.Stat(file); err == nil {
+			return file, true
+		}
+	}
+	return "", false
+}
+
+func RemoveQuotes(input string) (string, []string) {
+	var word string
+	var output string
+	var newArr []string
+	withinQuotes := false
+	if strings.Contains(input, "'") || strings.Contains(input, `"`) {
+
+		for i := 0; i < len(input); i++ {
+			ch := input[i]
+
+			if string(ch) == "'" {
+				if withinQuotes {
+					// we’re about to CLOSE a quoted region
+					withinQuotes = false
+					// peek: if the very next char is *another* quote,
+					// we do NOT flush yet (we’ll reopen and continue)
+					if !(i+1 < len(input) && input[i+1] == '\'') {
+						// only flush when it’s not an adjacent quote
+						newArr = append(newArr, word)
+						word = "" // reset buffer
+					}
+				} else {
+					// we’re opening a quoted region
+					withinQuotes = true
+				}
+				continue
+			}
+
+			if withinQuotes {
+				word += string(ch)
+			}
+		}
+
+		if word != "" {
+			newArr = append(newArr, word)
+		}
+
+		singlesRemoved := strings.ReplaceAll(input, "'", "")
+		doublesRemoved := strings.ReplaceAll(singlesRemoved, `"`, "")
+		output = doublesRemoved
+	} else {
+		output = input
+	}
+	return output, newArr
+}
+
 func main() {
 
 	for {
@@ -22,9 +78,22 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Error reading input: ", err)
 			os.Exit(1)
 		}
+
 		cmdArr := strings.Fields(input)
 		cmd := strings.TrimSpace(cmdArr[0])
-		args := cmdArr[1:]
+
+		var args []string
+
+		newInput, newArgsArr := RemoveQuotes(input)
+
+		if strings.Contains(input, "'") || strings.Contains(input, `"`) {
+			input = newInput
+			args = newArgsArr
+		} else if len(newArgsArr) == 0 {
+			args = cmdArr[1:]
+		} else {
+			args = cmdArr[1:]
+		}
 
 		if strings.TrimSpace(input) == "exit 0" {
 			break
@@ -32,7 +101,7 @@ func main() {
 
 		switch cmd {
 		case "echo":
-			EchoCmd(cmdArr)
+			EchoCmd(args)
 		case "type":
 			TypeCmd(cmdArr, paths)
 		case "pwd":
@@ -51,8 +120,8 @@ func main() {
 
 }
 
-func EchoCmd(cmdArr []string) {
-	output := strings.Join(cmdArr[1:], " ")
+func EchoCmd(args []string) {
+	output := strings.Join(args, " ")
 	fmt.Println(output)
 }
 
@@ -81,16 +150,6 @@ func CustomExeCmd(cmd string, args []string) {
 	exc.Stdout = os.Stdout
 	exc.Stderr = os.Stderr
 	exc.Run()
-}
-
-func FindPath(val string, paths []string) (string, bool) {
-	for _, path := range paths {
-		file := path + "/" + val
-		if _, err := os.Stat(file); err == nil {
-			return file, true
-		}
-	}
-	return "", false
 }
 
 func Pwd() {
