@@ -25,36 +25,31 @@ func RemoveQuotes(input string) (string, []string) {
 	var word string
 	var output string
 	var newArr []string
-	withinQuotes := false
+	var quoteChar rune
 	if strings.Contains(input, "'") || strings.Contains(input, `"`) {
 
-		for i := 0; i < len(input); i++ {
-			ch := input[i]
-
-			if string(ch) == "'" {
-				if withinQuotes {
-					// we’re about to CLOSE a quoted region
-					withinQuotes = false
-					// peek: if the very next char is *another* quote,
-					// we do NOT flush yet (we’ll reopen and continue)
-					if !(i+1 < len(input) && input[i+1] == '\'') {
-						// only flush when it’s not an adjacent quote
+		for i, ch := range input {
+			switch ch {
+			case '\'', '"':
+				if quoteChar == 0 {
+					quoteChar = ch
+				} else if quoteChar == ch {
+					if !(i+1 < len(input) && (input[i+1] == '\'' || input[i+1] == '"')) {
 						newArr = append(newArr, word)
-						word = "" // reset buffer
+						word = ""
 					}
+					quoteChar = 0
 				} else {
-					// we’re opening a quoted region
-					withinQuotes = true
+					word += string(ch)
 				}
-				continue
-			}
-
-			if withinQuotes {
-				word += string(ch)
+			default:
+				if quoteChar != 0 {
+					word += string(ch)
+				}
 			}
 		}
 
-		if word != "" {
+		if word != "" && quoteChar != 0 {
 			newArr = append(newArr, word)
 		}
 
