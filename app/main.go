@@ -28,13 +28,15 @@ func RemoveQuotes(input string) (string, []string) {
 	var quoteChar rune
 	if strings.Contains(input, "'") || strings.Contains(input, `"`) {
 
-		for i, ch := range input {
+		for i := 0; i < len(input); i++ {
+			ch := rune(input[i])
+
 			switch ch {
 			case '\'', '"':
 				if quoteChar == 0 {
 					quoteChar = ch
 				} else if quoteChar == ch {
-					if !(i+1 < len(input) && (input[i+1] == '\'' || input[i+1] == '"')) {
+					if !(i+1 < len(input) && (input[i+1] == '\'' || input[i+1] == '"' || input[i+1] == '\\' || input[i+1] == '/')) {
 						newArr = append(newArr, word)
 						word = ""
 					}
@@ -42,6 +44,12 @@ func RemoveQuotes(input string) (string, []string) {
 				} else {
 					word += string(ch)
 				}
+			// case '\\', '/':
+			// 	if i+1 < len(input) {
+			// 		next := rune(input[i+1])
+			// 		word += string(next)
+			// 		i++
+			// 	}
 			default:
 				if quoteChar != 0 {
 					word += string(ch)
@@ -57,7 +65,10 @@ func RemoveQuotes(input string) (string, []string) {
 		doublesRemoved := strings.ReplaceAll(singlesRemoved, `"`, "")
 		output = doublesRemoved
 	} else {
-		output = input
+		forwardRemoved := strings.ReplaceAll(input, `/`, "")
+		backwardRemoved := strings.ReplaceAll(forwardRemoved, `\`, "")
+		output = backwardRemoved
+		// output = input
 	}
 	return output, newArr
 }
@@ -81,7 +92,7 @@ func main() {
 
 		newInput, newArgsArr := RemoveQuotes(input)
 
-		if strings.Contains(input, "'") || strings.Contains(input, `"`) {
+		if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
 			input = newInput
 			args = newArgsArr
 		} else if len(newArgsArr) == 0 {
