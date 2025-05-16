@@ -26,7 +26,8 @@ func RemoveQuotes(input string) (string, []string) {
 	var output string
 	var newArr []string
 	var quoteChar rune
-	if strings.Contains(input, "'") || strings.Contains(input, `"`) {
+	// var slashChar rune
+	if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
 
 		for i := 0; i < len(input); i++ {
 			ch := rune(input[i])
@@ -44,12 +45,8 @@ func RemoveQuotes(input string) (string, []string) {
 				} else {
 					word += string(ch)
 				}
-			// case '\\', '/':
-			// 	if i+1 < len(input) {
-			// 		next := rune(input[i+1])
-			// 		word += string(next)
-			// 		i++
-			// 	}
+			case '\\', '/':
+				// I'm having problem with this case, I am not sure how to implement the 2nd part of the challenge here
 			default:
 				if quoteChar != 0 {
 					word += string(ch)
@@ -95,6 +92,7 @@ func main() {
 		if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
 			input = newInput
 			args = newArgsArr
+			fmt.Println(args)
 		} else if len(newArgsArr) == 0 {
 			args = cmdArr[1:]
 		} else {
