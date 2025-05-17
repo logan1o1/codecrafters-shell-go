@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 var builtins = []string{"exit", "echo", "type", "pwd"}
@@ -23,50 +24,65 @@ func FindPath(val string, paths []string) (string, bool) {
 
 func RemoveQuotes(input string) (string, []string) {
 	var word string
-	var output string
 	var newArr []string
 	var quoteChar rune
-	// var slashChar rune
-	if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
+	var deferOpenFlush bool
 
-		for i := 0; i < len(input); i++ {
-			ch := rune(input[i])
+	for i := 0; i < len(input); i++ {
+		ch := rune(input[i])
 
-			switch ch {
-			case '\'', '"':
-				if quoteChar == 0 {
-					quoteChar = ch
-				} else if quoteChar == ch {
-					if !(i+1 < len(input) && (input[i+1] == '\'' || input[i+1] == '"' || input[i+1] == '\\' || input[i+1] == '/')) {
-						newArr = append(newArr, word)
-						word = ""
-					}
-					quoteChar = 0
-				} else {
-					word += string(ch)
-				}
-			case '\\', '/':
-				// I'm having problem with this case, I am not sure how to implement the 2nd part of the challenge here
-			default:
-				if quoteChar != 0 {
-					word += string(ch)
-				}
+		if quoteChar == 0 && ch == '\\' {
+			if i+1 < len(input) {
+				word += string(input[i+1])
+				i++
 			}
+			continue
 		}
 
-		if word != "" && quoteChar != 0 {
-			newArr = append(newArr, word)
+		if ch == '\'' || ch == '"' {
+			if quoteChar == 0 {
+				if !deferOpenFlush && word != "" {
+					newArr = append(newArr, word)
+					word = ""
+				}
+				quoteChar = ch
+				deferOpenFlush = false
+			} else if quoteChar == ch {
+				if i+1 < len(input) && rune(input[i+1]) == ch {
+					// skip the flush for now, but we will reopen
+					deferOpenFlush = true
+				} else {
+					// this is a real close, flush the buffer
+					newArr = append(newArr, word)
+					word = ""
+					deferOpenFlush = false
+				}
+				quoteChar = 0
+			} else {
+				word += string(ch)
+			}
+			continue
 		}
 
-		singlesRemoved := strings.ReplaceAll(input, "'", "")
-		doublesRemoved := strings.ReplaceAll(singlesRemoved, `"`, "")
-		output = doublesRemoved
-	} else {
-		forwardRemoved := strings.ReplaceAll(input, `/`, "")
-		backwardRemoved := strings.ReplaceAll(forwardRemoved, `\`, "")
-		output = backwardRemoved
-		// output = input
+		if quoteChar == 0 && unicode.IsSpace(ch) {
+			if word != "" {
+				newArr = append(newArr, word)
+				word = ""
+			}
+			continue
+		}
+
+		word += string(ch)
 	}
+
+	if word != "" {
+		newArr = append(newArr, word)
+	}
+
+	noSingles := strings.ReplaceAll(input, "'", "")
+	noDoubles := strings.ReplaceAll(noSingles, `"`, "")
+	output := noDoubles
+
 	return output, newArr
 }
 
@@ -91,8 +107,7 @@ func main() {
 
 		if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
 			input = newInput
-			args = newArgsArr
-			fmt.Println(args)
+			args = newArgsArr[1:]
 		} else if len(newArgsArr) == 0 {
 			args = cmdArr[1:]
 		} else {
