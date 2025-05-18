@@ -22,7 +22,7 @@ func FindPath(val string, paths []string) (string, bool) {
 	return "", false
 }
 
-func RemoveQuotes(input string) (string, []string) {
+func InputParser(input string) (string, []string) {
 	var word string
 	var newArr []string
 	var quoteChar rune
@@ -48,11 +48,9 @@ func RemoveQuotes(input string) (string, []string) {
 				quoteChar = ch
 				deferOpenFlush = false
 			} else if quoteChar == ch {
-				if i+1 < len(input) && rune(input[i+1]) == ch {
-					// skip the flush for now, but we will reopen
+				if i+1 < len(input) && rune(input[i+1]) == quoteChar {
 					deferOpenFlush = true
 				} else {
-					// this is a real close, flush the buffer
 					newArr = append(newArr, word)
 					word = ""
 					deferOpenFlush = false
@@ -62,6 +60,15 @@ func RemoveQuotes(input string) (string, []string) {
 				word += string(ch)
 			}
 			continue
+		}
+
+		if quoteChar != 0 && ch == '\\' {
+			if i+1 < len(input) && rune(input[i+1]) == ch {
+				continue
+			} else if i+1 < len(input) && rune(input[i+1]) == '"' {
+				word += string(input[i+1])
+				i++
+			}
 		}
 
 		if quoteChar == 0 && unicode.IsSpace(ch) {
@@ -103,7 +110,7 @@ func main() {
 
 		var args []string
 
-		newInput, newArgsArr := RemoveQuotes(input)
+		newInput, newArgsArr := InputParser(input)
 
 		if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
 			input = newInput
