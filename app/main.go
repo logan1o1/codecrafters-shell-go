@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
-	"unicode"
 )
 
 var builtins = []string{"exit", "echo", "type", "pwd"}
@@ -23,67 +22,67 @@ func FindPath(val string, paths []string) (string, bool) {
 }
 
 func InputParser(input string) (string, []string) {
-	var word string
+	var word strings.Builder
 	var newArr []string
-	var quoteChar rune
-	var deferOpenFlush bool
+	preserveNextLiteral := false
+	backslashInQuotes := false
+	inQuotes := false
+	quoteChar := rune(0)
 
-	for i := 0; i < len(input); i++ {
-		ch := rune(input[i])
+	for _, ch := range input {
 
-		if quoteChar == 0 && ch == '\\' {
-			if i+1 < len(input) {
-				word += string(input[i+1])
-				i++
-			}
+		if preserveNextLiteral {
+			word.WriteRune(ch)
+			preserveNextLiteral = false
 			continue
 		}
-
-		if ch == '\'' || ch == '"' {
-			if quoteChar == 0 {
-				if !deferOpenFlush && word != "" {
-					newArr = append(newArr, word)
-					word = ""
-				}
-				quoteChar = ch
-				deferOpenFlush = false
-			} else if quoteChar == ch {
-				if i+1 < len(input) && rune(input[i+1]) == quoteChar {
-					deferOpenFlush = true
-				} else {
-					newArr = append(newArr, word)
-					word = ""
-					deferOpenFlush = false
-				}
-				quoteChar = 0
+		if backslashInQuotes {
+			if ch == '$' || ch == '\\' || ch == '"' {
+				word.WriteRune(ch)
 			} else {
-				word += string(ch)
+				word.WriteRune('\\')
+				word.WriteRune(ch)
 			}
+			backslashInQuotes = false
 			continue
 		}
 
-		if quoteChar != 0 && ch == '\\' {
-			if i+1 < len(input) && rune(input[i+1]) == ch {
-				continue
-			} else if i+1 < len(input) && rune(input[i+1]) == '"' {
-				word += string(input[i+1])
-				i++
+		switch {
+		case ch == '"' || ch == '\'':
+			if !inQuotes {
+				inQuotes = true
+				quoteChar = ch
+			} else if ch == quoteChar {
+				inQuotes = false
+				quoteChar = rune(0)
+			} else {
+				word.WriteRune(ch)
 			}
-		}
-
-		if quoteChar == 0 && unicode.IsSpace(ch) {
-			if word != "" {
-				newArr = append(newArr, word)
-				word = ""
+		case ch == '\\':
+			if !inQuotes {
+				preserveNextLiteral = true
+			} else if quoteChar == '"' {
+				backslashInQuotes = true
+			} else {
+				word.WriteRune(ch)
 			}
-			continue
+		case ch == ' ':
+			if inQuotes {
+				word.WriteRune(ch)
+			} else if word.Len() > 0 {
+				newArr = append(newArr, word.String())
+				word.Reset()
+			}
+		default:
+			word.WriteRune(ch)
 		}
-
-		word += string(ch)
 	}
 
-	if word != "" {
-		newArr = append(newArr, word)
+	if word.Len() > 0 {
+		newArr = append(newArr, word.String())
+	}
+	if len(newArr) == 0 {
+		return "", nil
 	}
 
 	noSingles := strings.ReplaceAll(input, "'", "")
@@ -110,7 +109,7 @@ func main() {
 
 		var args []string
 
-		newInput, newArgsArr := InputParser(input)
+		newInput, newArgsArr := InputParser(input[:len(input)-1])
 
 		if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
 			input = newInput
