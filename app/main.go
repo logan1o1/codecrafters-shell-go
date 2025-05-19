@@ -37,7 +37,7 @@ func InputParser(input string) (string, []string) {
 			continue
 		}
 		if backslashInQuotes {
-			if ch == '$' || ch == '\\' || ch == '"' {
+			if ch == '$' || ch == '\\' || ch == '"' || ch == '`' {
 				word.WriteRune(ch)
 			} else {
 				word.WriteRune('\\')
@@ -114,6 +114,7 @@ func main() {
 		if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
 			input = newInput
 			args = newArgsArr[1:]
+			cmd = newArgsArr[0]
 		} else if len(newArgsArr) == 0 {
 			args = cmdArr[1:]
 		} else {
