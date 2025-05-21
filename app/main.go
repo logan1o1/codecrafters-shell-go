@@ -133,6 +133,7 @@ func main() {
 
 		var outfile *os.File
 		var errfile *os.File
+		inTwo := false
 
 		for i, arg := range args {
 			if (arg == ">" || arg == "1>" || arg == "2>") && i+1 < len(args) {
@@ -141,17 +142,33 @@ func main() {
 					fmt.Fprintln(os.Stderr, "Error creating file:", err)
 					continue
 				}
+				errfile, err = os.Create(args[i+1])
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Error creating file:", err)
+					continue
+				}
+				if arg == "2>" {
+					inTwo = true
+				} else {
+					inTwo = false
+				}
 				args = args[:i]
 				break
 			}
 		}
 
 		if outfile != nil || errfile != nil {
+			var originalStderr *os.File
+			var originalStdout *os.File
 			defer outfile.Close()
-			originalStdout := os.Stdout
-			originalStderr := os.Stderr
-			os.Stdout = outfile
-			os.Stderr = outfile
+			defer errfile.Close()
+			if inTwo {
+				originalStderr = os.Stderr
+				os.Stderr = errfile
+			} else {
+				originalStdout = os.Stdout
+				os.Stdout = outfile
+			}
 			defer func() {
 				os.Stdout = originalStdout
 				os.Stderr = originalStderr
