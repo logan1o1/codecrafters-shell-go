@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"syscall"
 )
 
 var builtins = []string{"exit", "echo", "type", "pwd"}
@@ -30,6 +31,11 @@ func InputParser(input string) (string, []string) {
 	quoteChar := rune(0)
 
 	for _, ch := range input {
+
+		if !inQuotes && quoteChar == 0 && ch == '/' {
+			word.WriteRune(ch)
+			continue
+		}
 
 		if preserveNextLiteral {
 			word.WriteRune(ch)
@@ -125,6 +131,27 @@ func main() {
 			break
 		}
 
+		var outfile *os.File
+
+		for i, arg := range args {
+			if (arg == ">" || arg == "1>") && i+1 < len(args) {
+				outfile, err = os.Create(args[i+1])
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Error creating file:", err)
+					continue
+				}
+				args = args[:i]
+				break
+			}
+		}
+
+		if outfile != nil {
+			defer outfile.Close()
+			originalStdout := os.Stdout
+			os.Stdout = outfile
+			defer func() { os.Stdout = originalStdout }()
+		}
+
 		switch cmd {
 		case "echo":
 			EchoCmd(args)
@@ -138,9 +165,14 @@ func main() {
 			filepath, exists := FindPath(cmd, paths)
 			if exists && filepath != "" {
 				CustomExeCmd(cmd, args)
+				// ExecuteAndRedirect(cmd, args)
 			} else {
 				fmt.Println(cmd + ": command not found")
 			}
+		}
+
+		if outfile != nil {
+			os.Stdout = os.NewFile(uintptr(syscall.Stdout), "/dev/stdout")
 		}
 	}
 
@@ -175,7 +207,10 @@ func CustomExeCmd(cmd string, args []string) {
 	exc := exec.Command(cmd, args...)
 	exc.Stdout = os.Stdout
 	exc.Stderr = os.Stderr
-	exc.Run()
+	err := exc.Run()
+	if err != nil {
+		return
+	}
 }
 
 func Pwd() {
@@ -193,5 +228,43 @@ func Cd(args []string) {
 	err := os.Chdir(formatedPath)
 	if err != nil {
 		fmt.Println("cd: " + path + ": No such file or directory")
+	}
+}
+
+func ExecuteAndRedirect(cmd string, args []string) {
+	if cmd == "" || len(args) == 0 {
+		return
+	}
+
+	var outfile *os.File
+	var err error
+
+	filtered := make([]string, 0, len(args))
+
+	for i := 0; i < len(args); i++ {
+		token := args[i]
+		if (token == ">" || token == "1>") && i+1 < len(args) {
+			outName := args[i+1]
+			outfile, err = os.OpenFile(outName, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "redirect error:", err)
+				return
+			}
+			i++
+		} else {
+			filtered = append(filtered, token)
+		}
+	}
+
+	command := exec.Command(cmd, filtered...)
+	if outfile != nil {
+		command.Stdout = outfile
+	} else {
+		command.Stdout = os.Stdout
+	}
+	command.Stderr = os.Stderr
+
+	if outfile != nil {
+		outfile.Close()
 	}
 }
