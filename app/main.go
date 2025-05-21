@@ -132,9 +132,10 @@ func main() {
 		}
 
 		var outfile *os.File
+		var errfile *os.File
 
 		for i, arg := range args {
-			if (arg == ">" || arg == "1>") && i+1 < len(args) {
+			if (arg == ">" || arg == "1>" || arg == "2>") && i+1 < len(args) {
 				outfile, err = os.Create(args[i+1])
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "Error creating file:", err)
@@ -145,11 +146,16 @@ func main() {
 			}
 		}
 
-		if outfile != nil {
+		if outfile != nil || errfile != nil {
 			defer outfile.Close()
 			originalStdout := os.Stdout
+			originalStderr := os.Stderr
 			os.Stdout = outfile
-			defer func() { os.Stdout = originalStdout }()
+			os.Stderr = outfile
+			defer func() {
+				os.Stdout = originalStdout
+				os.Stderr = originalStderr
+			}()
 		}
 
 		switch cmd {
