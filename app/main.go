@@ -133,7 +133,8 @@ func main() {
 
 		var args []string
 
-		newInput, newArgsArr := InputParser(input[:len(input)-1])
+		newInput, newArgsArr := InputParser(input[:len(input)])
+		// fmt.Println(newArgsArr)
 
 		if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
 			input = newInput
