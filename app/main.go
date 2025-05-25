@@ -1,13 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"slices"
 	"strings"
 	"syscall"
+
+	"github.com/chzyer/readline"
 )
 
 var builtins = []string{"exit", "echo", "type", "pwd"}
@@ -99,12 +100,29 @@ func InputParser(input string) (string, []string) {
 }
 
 func main() {
+	completer := readline.NewPrefixCompleter(
+		readline.PcItem("echo"),
+		readline.PcItem("exit"),
+	)
+
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:       "$ ",
+		AutoComplete: completer,
+	})
+	if err != nil {
+
+		fmt.Println(err)
+
+	}
+
+	defer rl.Close()
 
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
 
 		paths := strings.Split(os.Getenv("PATH"), ":")
-		input, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		// input, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		input, err := rl.Readline()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input: ", err)
 			os.Exit(1)
