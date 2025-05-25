@@ -154,11 +154,21 @@ func main() {
 				}
 				args = args[:i]
 				break
-			} else if (arg == ">>" || arg == "1>>") && i+1 < len(args) {
+			} else if (arg == ">>" || arg == "1>>" || arg == "2>>") && i+1 < len(args) {
 				outfile, err = os.OpenFile(args[i+1], os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "Error creating file:", err)
 					continue
+				}
+				errfile, err = os.OpenFile(args[i+1], os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Error creating file:", err)
+					continue
+				}
+				if arg == "2>>" {
+					inTwo = true
+				} else {
+					inTwo = false
 				}
 				args = args[:i]
 				break
