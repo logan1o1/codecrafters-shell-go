@@ -154,6 +154,14 @@ func main() {
 				}
 				args = args[:i]
 				break
+			} else if (arg == ">>" || arg == "1>>") && i+1 < len(args) {
+				outfile, err = os.OpenFile(args[i+1], os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Error creating file:", err)
+					continue
+				}
+				args = args[:i]
+				break
 			}
 		}
 
