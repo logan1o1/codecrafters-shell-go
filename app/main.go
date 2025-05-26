@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"syscall"
@@ -99,13 +100,52 @@ func InputParser(input string) (string, []string) {
 	return output, newArr
 }
 
+func CustomExeFromPath() []string {
+	envPath := os.Getenv("PATH")
+	paths := strings.Split(envPath, string(os.PathListSeparator))
+	seen := make(map[string]bool)
+	var result []string
+
+	for _, dir := range paths {
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+
+		for _, file := range files {
+			name := file.Name()
+			if seen[name] {
+				continue
+			}
+			fullPath := filepath.Join(dir, name)
+			info, err := os.Stat(fullPath)
+			if err == nil && !info.IsDir() && (info.Mode()&0111 != 0) {
+				seen[name] = true
+				result = append(result, name)
+			}
+		}
+	}
+	return result
+}
+
 func main() {
+	cachedExe := CustomExeFromPath()
+
 	completer := readline.NewPrefixCompleter(
 		readline.PcItem("echo"),
 		readline.PcItem("exit"),
 		readline.PcItemDynamic(func(s string) []string {
-			fmt.Print("\x07")
-			return []string{}
+			var match []string
+			for _, cxe := range cachedExe {
+				if strings.HasPrefix(cxe, s) {
+					match = append(match, cxe)
+				}
+			}
+			if len(match) == 0 {
+				fmt.Print("\x07")
+				return []string{}
+			}
+			return match
 		}),
 	)
 
@@ -120,6 +160,7 @@ func main() {
 
 	}
 
+	rl.CaptureExitSignal()
 	defer rl.Close()
 
 	for {
