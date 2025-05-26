@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/chzyer/readline"
 )
@@ -129,66 +130,142 @@ func CustomExeFromPath() []string {
 	return result
 }
 
-func main() {
-	rl, err := readline.NewEx(&readline.Config{
-		Prompt: "$ ",
-		// AutoComplete:    completer,
-		InterruptPrompt: "^C",
-		EOFPrompt:       "exit",
-	})
-	if err != nil {
-		fmt.Println(err)
+func getCurrentWord(line []rune, pos int) string {
+	start := pos
+
+	for start > 0 && line[start-1] != ' ' {
+		start--
+	}
+	end := pos
+
+	for end < len(line) && line[end] != ' ' {
+		end++
 	}
 
-	rl.CaptureExitSignal()
-	defer rl.Close()
+	return string(line[start:end])
+}
 
+func printMatchesInline(cmds []string, prefix string) {
+
+	var matches []string
+
+	for _, cmd := range cmds {
+
+		if strings.HasPrefix(cmd, prefix) {
+			matches = append(matches, cmd)
+		}
+
+	}
+
+	if len(matches) > 0 {
+		fmt.Print("\n")
+
+		for _, match := range matches {
+			fmt.Print(match, "  ")
+		}
+		fmt.Print("\n")
+	}
+}
+
+type tabListener struct {
+	lastTabTime time.Time
+
+	cachedExecutables []string
+
+	rl *readline.Instance
+}
+
+func (l *tabListener) OnChange(line []rune, pos int, key rune) ([]rune, int, bool) {
+
+	if key == readline.CharTab {
+
+		now := time.Now()
+		word := getCurrentWord(line, pos)
+
+		// Collect matches
+		var matches []string
+
+		for _, cmd := range l.cachedExecutables {
+			if strings.HasPrefix(cmd, word) {
+				matches = append(matches, cmd)
+			}
+		}
+
+		if len(matches) == 0 {
+			fmt.Print("\x07") // bell - no matches
+			l.lastTabTime = now
+			return line, pos, true
+		}
+
+		if len(matches) == 1 {
+			suffix := matches[0][len(word):]
+			// Add trailing space after completion if suffix is empty or cursor is at the end
+			if suffix == "" {
+				suffix = " "
+			} else {
+				// You may want to add a space if the cursor is at the end of the word
+				// but generally adding space after completion is safe
+				suffix += " "
+			}
+			// Insert suffix at cursor position
+			newLine := make([]rune, 0, len(line)+len(suffix))
+
+			newLine = append(newLine, line[:pos]...)
+
+			newLine = append(newLine, []rune(suffix)...)
+
+			newLine = append(newLine, line[pos:]...)
+
+			newPos := pos + len(suffix)
+
+			l.lastTabTime = now
+
+			return newLine, newPos, true
+		}
+		// Multiple matches
+		if now.Sub(l.lastTabTime) < 500*time.Millisecond {
+			// Second tab — print matches
+			fmt.Print("\n")
+			for _, m := range matches {
+				fmt.Print(m, "  ")
+			}
+			fmt.Print("\n")
+			l.rl.Refresh()
+		} else {
+			// First tab — bell
+			fmt.Print("\x07")
+		}
+		l.lastTabTime = now
+		return line, pos, true
+	}
+	return line, pos, false
+}
+
+func (l *tabListener) OnExecute([]rune) {}
+
+func main() {
 	cachedExe := CustomExeFromPath()
+	cachedExe = append(cachedExe, "exit", "type", "cd")
+	sort.Strings(cachedExe)
 
-	var lastPrefix string
-	var tabCount int
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt: "$ ",
 
-	completer := readline.NewPrefixCompleter(
-		readline.PcItem("echo"),
-		readline.PcItem("exit"),
-		readline.PcItemDynamic(func(s string) []string {
-
-			if s != lastPrefix {
-				lastPrefix = s
-				tabCount = 0
-			}
-			tabCount++
-
-			var match []string
-			for _, cxe := range cachedExe {
-				if strings.HasPrefix(cxe, s) {
-					// fmt.Print("\a")
-					match = append(match, cxe)
-				}
-			}
-			sort.Strings(match)
-
-			if len(match) == 0 {
-				rl.Write([]byte("\a"))
-				return nil
-			}
-
-			if len(match) == 1 {
-				return match
-			}
-
-			if tabCount == 1 {
-				rl.Write([]byte("\a"))
-				return nil
-			}
-
-			fmt.Printf("$ %s\n", s)
-			tabCount = 0
+		AutoComplete: readline.PcItemDynamic(func(s string) []string {
 			return nil
 		}),
-	)
+	})
 
-	rl.Config.AutoComplete = completer
+	if err != nil {
+		panic(err)
+	}
+
+	defer rl.Close()
+
+	rl.Config.Listener = &tabListener{
+		cachedExecutables: cachedExe,
+		rl:                rl,
+	}
 
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
