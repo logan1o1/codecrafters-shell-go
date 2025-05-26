@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"syscall"
 
@@ -129,39 +130,65 @@ func CustomExeFromPath() []string {
 }
 
 func main() {
-	cachedExe := CustomExeFromPath()
-
-	completer := readline.NewPrefixCompleter(
-		readline.PcItem("echo"),
-		readline.PcItem("exit"),
-		readline.PcItemDynamic(func(s string) []string {
-			var match []string
-			for _, cxe := range cachedExe {
-				if strings.HasPrefix(cxe, s) {
-					match = append(match, cxe)
-				}
-			}
-			if len(match) == 0 {
-				fmt.Print("\x07")
-				return []string{}
-			}
-			return match
-		}),
-	)
-
 	rl, err := readline.NewEx(&readline.Config{
-		Prompt:          "$ ",
-		AutoComplete:    completer,
+		Prompt: "$ ",
+		// AutoComplete:    completer,
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
 	})
 	if err != nil {
 		fmt.Println(err)
-
 	}
 
 	rl.CaptureExitSignal()
 	defer rl.Close()
+
+	cachedExe := CustomExeFromPath()
+
+	var lastPrefix string
+	var tabCount int
+
+	completer := readline.NewPrefixCompleter(
+		readline.PcItem("echo"),
+		readline.PcItem("exit"),
+		readline.PcItemDynamic(func(s string) []string {
+
+			if s != lastPrefix {
+				lastPrefix = s
+				tabCount = 0
+			}
+			tabCount++
+
+			var match []string
+			for _, cxe := range cachedExe {
+				if strings.HasPrefix(cxe, s) {
+					// fmt.Print("\a")
+					match = append(match, cxe)
+				}
+			}
+			sort.Strings(match)
+
+			if len(match) == 0 {
+				rl.Write([]byte("\a"))
+				return nil
+			}
+
+			if len(match) == 1 {
+				return match
+			}
+
+			if tabCount == 1 {
+				rl.Write([]byte("\a"))
+				return nil
+			}
+
+			fmt.Printf("$ %s\n", s)
+			tabCount = 0
+			return nil
+		}),
+	)
+
+	rl.Config.AutoComplete = completer
 
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
