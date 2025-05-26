@@ -103,14 +103,19 @@ func main() {
 	completer := readline.NewPrefixCompleter(
 		readline.PcItem("echo"),
 		readline.PcItem("exit"),
+		readline.PcItemDynamic(func(s string) []string {
+			fmt.Print("\x07")
+			return []string{}
+		}),
 	)
 
 	rl, err := readline.NewEx(&readline.Config{
-		Prompt:       "$ ",
-		AutoComplete: completer,
+		Prompt:          "$ ",
+		AutoComplete:    completer,
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
 	})
 	if err != nil {
-
 		fmt.Println(err)
 
 	}
