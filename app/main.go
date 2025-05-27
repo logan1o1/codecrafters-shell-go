@@ -402,15 +402,15 @@ func main() {
 			Cd(args)
 		case "history":
 			var historyStrings = []string{}
-			for i, eachLine := range history {
+			for i, hist := range history {
 				numStr := strconv.Itoa(i + 1)
-				historyString := "   " + numStr + "  " + eachLine
+				historyString := "   " + numStr + "  " + hist
 				historyStrings = append(historyStrings, historyString)
 			}
 			var subHistory = []string{}
 			if len(args) == 1 {
-				n, error := strconv.Atoi(args[0])
-				if error != nil {
+				n, err := strconv.Atoi(args[0])
+				if err != nil {
 					fmt.Println("invalid arg")
 					continue
 				}
