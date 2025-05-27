@@ -175,6 +175,24 @@ type tabListener struct {
 	rl *readline.Instance
 }
 
+func longestCommonPrefix(strs []string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	prefix := strs[0]
+	for _, str := range strs[1:] {
+		i := 0
+		for i < len(prefix) && i < len(str) && prefix[i] == str[i] {
+			i++
+		}
+		prefix = prefix[:i]
+		if prefix == "" {
+			break
+		}
+	}
+	return prefix
+}
+
 func (l *tabListener) OnChange(line []rune, pos int, key rune) ([]rune, int, bool) {
 
 	if key == readline.CharTab {
@@ -209,18 +227,27 @@ func (l *tabListener) OnChange(line []rune, pos int, key rune) ([]rune, int, boo
 			}
 			// Insert suffix at cursor position
 			newLine := make([]rune, 0, len(line)+len(suffix))
-
 			newLine = append(newLine, line[:pos]...)
-
 			newLine = append(newLine, []rune(suffix)...)
-
 			newLine = append(newLine, line[pos:]...)
-
 			newPos := pos + len(suffix)
-
 			l.lastTabTime = now
 
 			return newLine, newPos, true
+		}
+
+		lcp := longestCommonPrefix(matches)
+		if len(lcp) > len(word) {
+			suffix := lcp[len(word):]
+			newLine := make([]rune, 0, len(line)+len(suffix))
+			newLine = append(newLine, line[:pos]...)
+			newLine = append(newLine, []rune(suffix)...)
+			newLine = append(newLine, line[pos:]...)
+			newPos := pos + len(suffix)
+			l.lastTabTime = now
+
+			return newLine, newPos, true
+
 		}
 		// Multiple matches
 		if now.Sub(l.lastTabTime) < 500*time.Millisecond {
@@ -250,7 +277,6 @@ func main() {
 
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt: "$ ",
-
 		AutoComplete: readline.PcItemDynamic(func(s string) []string {
 			return nil
 		}),
@@ -271,7 +297,7 @@ func main() {
 		fmt.Fprint(os.Stdout, "$ ")
 
 		paths := strings.Split(os.Getenv("PATH"), ":")
-		// input, err := bufio.NewReader(os.Stdin).ReadString('\n')
+
 		input, err := rl.Readline()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input: ", err)
@@ -283,8 +309,7 @@ func main() {
 
 		var args []string
 
-		newInput, newArgsArr := InputParser(input[:len(input)])
-		// fmt.Println(newArgsArr)
+		newInput, newArgsArr := InputParser(input)
 
 		if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
 			input = newInput
