@@ -400,7 +400,9 @@ func main() {
 		case "cd":
 			Cd(args)
 		case "history":
-			fmt.Println(history)
+			for i := range len(history) {
+				fmt.Printf("%d  %s\n", i, history[i])
+			}
 		default:
 			filepath, exists := FindPath(cmd, paths)
 			if exists && filepath != "" {
