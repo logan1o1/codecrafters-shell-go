@@ -14,7 +14,7 @@ import (
 	"github.com/chzyer/readline"
 )
 
-var builtins = []string{"exit", "echo", "type", "pwd"}
+var builtins = []string{"exit", "echo", "type", "pwd", "history"}
 
 func FindPath(val string, paths []string) (string, bool) {
 	for _, path := range paths {
@@ -293,6 +293,8 @@ func main() {
 		rl:                rl,
 	}
 
+	var history []string
+
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
 
@@ -307,9 +309,10 @@ func main() {
 		cmdArr := strings.Fields(input)
 		cmd := strings.TrimSpace(cmdArr[0])
 
-		var args []string
-
 		newInput, newArgsArr := InputParser(input)
+		history = append(history, newInput)
+
+		var args []string
 
 		if strings.Contains(input, "'") || strings.Contains(input, `"`) || strings.Contains(input, `/`) || strings.Contains(input, `\`) {
 			input = newInput
@@ -396,6 +399,8 @@ func main() {
 			Pwd()
 		case "cd":
 			Cd(args)
+		case "history":
+			fmt.Println(history)
 		default:
 			filepath, exists := FindPath(cmd, paths)
 			if exists && filepath != "" {
