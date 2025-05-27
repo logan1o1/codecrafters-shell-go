@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -400,9 +401,27 @@ func main() {
 		case "cd":
 			Cd(args)
 		case "history":
-			for i := range len(history) {
-				fmt.Printf("%d  %s\n", i, history[i])
+			var historyStrings = []string{}
+			for i, eachLine := range history {
+				numStr := strconv.Itoa(i + 1)
+				historyString := "   " + numStr + "  " + eachLine
+				historyStrings = append(historyStrings, historyString)
 			}
+			var subHistory = []string{}
+			if len(args) == 1 {
+				n, error := strconv.Atoi(args[0])
+				if error != nil {
+					fmt.Println("invalid arg")
+					continue
+				}
+				subHistory = historyStrings[len(history)-n:]
+			} else if len(args) == 0 {
+				subHistory = historyStrings
+			}
+			for _, historyLine := range subHistory {
+				fmt.Println(historyLine)
+			}
+			continue
 		default:
 			filepath, exists := FindPath(cmd, paths)
 			if exists && filepath != "" {
